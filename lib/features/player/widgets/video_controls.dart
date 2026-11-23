@@ -28,8 +28,6 @@ class VideoControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tracks = controller.tracks;
-
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 30, 18, 12),
       decoration: const BoxDecoration(

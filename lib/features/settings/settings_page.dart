@@ -73,7 +73,7 @@ class SettingsPage extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 26),
-          const _Section(
+          _Section(
             title: '存储',
             children: [
               _PathRow(

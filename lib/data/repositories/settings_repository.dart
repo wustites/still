@@ -1,5 +1,3 @@
-import 'package:drift/drift.dart';
-
 import '../db/app_database.dart';
 
 /// Key/value preferences backed by the same SQLite file as the library.

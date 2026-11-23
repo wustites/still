@@ -60,6 +60,9 @@ jobs:
           if (-not (Test-Path windows)) {
             Copy-Item -Recurse -Force .flutter_scaffold/windows .
           }
+          if (-not (Test-Path .metadata)) {
+            Copy-Item -Force .flutter_scaffold/.metadata .
+          }
           Remove-Item -Recurse -Force .flutter_scaffold
 
       - name: Dependencies

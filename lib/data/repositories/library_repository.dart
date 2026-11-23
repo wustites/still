@@ -196,6 +196,19 @@ class LibraryRepository {
     );
   }
 
+  /// Learned from the player the first time a file is opened.
+  Future<void> saveDuration(int id, Duration duration) async {
+    await (_db.update(_db.mediaItems)..where((t) => t.id.equals(id))).write(
+      MediaItemsCompanion(durationMs: Value(duration.inMilliseconds)),
+    );
+  }
+
+  Future<void> saveDimensions(int id, int width, int height) async {
+    await (_db.update(_db.mediaItems)..where((t) => t.id.equals(id))).write(
+      MediaItemsCompanion(width: Value(width), height: Value(height)),
+    );
+  }
+
   Future<void> setFavorite(int id, bool favorite) async {
     await (_db.update(_db.mediaItems)..where((t) => t.id.equals(id))).write(
       MediaItemsCompanion(

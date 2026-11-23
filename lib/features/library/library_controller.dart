@@ -68,6 +68,9 @@ class LibraryController extends ChangeNotifier {
 
   void selectScope(LibraryScope scope) {
     if (scope == LibraryScope.folder) return;
+    if (scope == LibraryScope.recent) {
+      _sort = MediaSort.lastPlayed;
+    }
     _select(LibrarySelection.scope(scope));
   }
 

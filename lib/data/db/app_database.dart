@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
+import '../models/media_kind.dart';
 import 'tables.dart';
 
 part 'app_database.g.dart';
@@ -10,16 +11,7 @@ part 'app_database.g.dart';
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
-    : super(
-        executor ??
-            driftDatabase(
-              name: 'still',
-              // A single database file lives in the app support directory.
-              // Sharing it across isolates is enabled so a future scanner
-              // isolate can write progress without lock contention.
-              native: const DriftNativeOptions(shareAcrossIsolates: true),
-            ),
-      );
+    : super(executor ?? driftDatabase(name: 'still'));
 
   @override
   int get schemaVersion => 1;

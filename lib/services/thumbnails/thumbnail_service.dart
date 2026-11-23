@@ -89,7 +89,7 @@ class ThumbnailService {
       final result = await Process.run(
         'ffmpeg',
         ['-version'],
-        runInShell: true,
+        runInShell: false,
       ).timeout(const Duration(seconds: 5));
       return result.exitCode == 0;
     } catch (_) {
@@ -121,7 +121,7 @@ class ThumbnailService {
         '-y',
         output,
       ],
-      runInShell: true,
+      runInShell: false,
     ).timeout(const Duration(seconds: 30));
     return result.exitCode == 0 && await File(output).exists();
   }

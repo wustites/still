@@ -300,6 +300,9 @@ class PlayerController extends ChangeNotifier {
   Future<void> _savePosition() async {
     final item = current;
     if (item == null) return;
+    // Ignore the initial `playing = false` emitted while a file is loading:
+    // duration and position are both still zero there.
+    if (_duration <= Duration.zero && position.value <= Duration.zero) return;
     var value = position.value;
     if (_duration > Duration.zero &&
         value >= _duration - const Duration(seconds: 2)) {

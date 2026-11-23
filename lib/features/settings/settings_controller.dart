@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import '../data/repositories/settings_repository.dart';
+import '../../data/repositories/settings_repository.dart';
 
 /// User preferences, loaded once at startup and written through on change.
 ///

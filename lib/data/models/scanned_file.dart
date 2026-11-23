@@ -1,6 +1,6 @@
 import 'package:path/path.dart' as p;
 
-import '../data/models/media_kind.dart';
+import 'media_kind.dart';
 
 /// A media file found by the scanner. Deliberately contains only primitives so
 /// it can be sent across an isolate boundary.

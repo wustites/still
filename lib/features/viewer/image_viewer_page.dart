@@ -58,7 +58,10 @@ class _ImageViewerPageState extends State<ImageViewerPage> {
       final index = _index + offset;
       if (index < 0 || index >= widget.items.length) continue;
       unawaited(
-        precacheImage(FileImage(File(widget.items[index].path)), context),
+        precacheImage(
+          FileImage(File(widget.items[index].path)),
+          context,
+        ).catchError((_) {}),
       );
     }
   }
