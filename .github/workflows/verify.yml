@@ -1,0 +1,72 @@
+name: verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: analyze + codegen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.50.1
+          cache: true
+
+      - name: Toolchain
+        run: flutter --version
+
+      - name: Dependencies
+        run: flutter pub get
+
+      - name: Generate drift code
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Unit tests
+        run: flutter test
+
+  windows:
+    name: build windows (debug)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.50.1
+          cache: true
+
+      - name: Toolchain
+        run: flutter --version
+
+      - name: Scaffold Windows runner
+        shell: pwsh
+        run: |
+          flutter create --platforms=windows --project-name still --org dev.still .flutter_scaffold
+          if (-not (Test-Path windows)) {
+            Copy-Item -Recurse -Force .flutter_scaffold/windows .
+          }
+          Remove-Item -Recurse -Force .flutter_scaffold
+
+      - name: Dependencies
+        run: flutter pub get
+
+      - name: Generate drift code
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Build
+        run: flutter build windows --debug

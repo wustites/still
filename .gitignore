@@ -1,0 +1,29 @@
+# Dart / Flutter
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+coverage/
+*.iml
+.idea/
+.vscode/
+
+# Generated
+*.g.dart
+*.freezed.dart
+
+# Local SDK scaffold
+.flutter_scaffold/
+
+# Platform build output
+windows/flutter/ephemeral/
+linux/flutter/ephemeral/
+macos/Flutter/ephemeral/
+macos/Flutter/Generated.xcconfig
+macos/Flutter/flutter_export_environment.sh
+windows/runner/resources/app_icon.ico.bak
+
+# OS
+.DS_Store
+Thumbs.db
