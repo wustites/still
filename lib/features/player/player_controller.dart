@@ -63,6 +63,9 @@ class PlayerController extends ChangeNotifier {
   bool _advancing = false;
   int _openToken = 0;
   String? _error;
+  bool _mediaLoaded = false;
+  int? _durationSavedFor;
+  int? _dimensionsSavedFor;
 
   List<MediaItem> get queue => _queue;
   int get index => _index;
@@ -97,6 +100,23 @@ class PlayerController extends ChangeNotifier {
         if (value == _duration) return;
         _duration = value;
         _notify();
+        if (value > Duration.zero && _mediaLoaded) {
+          unawaited(_saveDurationIfReady());
+        }
+      }),
+    );
+    _subscriptions.add(
+      _player.stream.width.listen((value) {
+        if (value != null && _mediaLoaded) {
+          unawaited(_saveDimensionsIfReady());
+        }
+      }),
+    );
+    _subscriptions.add(
+      _player.stream.height.listen((value) {
+        if (value != null && _mediaLoaded) {
+          unawaited(_saveDimensionsIfReady());
+        }
       }),
     );
     _subscriptions.add(
@@ -145,6 +165,7 @@ class PlayerController extends ChangeNotifier {
     if (item == null) return;
 
     final token = ++_openToken;
+    _mediaLoaded = false;
     _error = null;
     _duration = Duration.zero;
     position.value = Duration.zero;
@@ -154,9 +175,12 @@ class PlayerController extends ChangeNotifier {
       await _player.open(Media(Uri.file(item.path).toString()), play: true);
       if (_disposed || token != _openToken) return;
 
+      _mediaLoaded = true;
       await _player.setVolume(_settings.volume);
       _lastAudibleVolume = _settings.volume > 0 ? _settings.volume : 100;
       await _repository.markPlayed(item.id);
+      unawaited(_saveDurationIfReady());
+      unawaited(_saveDimensionsIfReady());
 
       if (_settings.resumePlayback &&
           item.positionMs > const Duration(seconds: 3).inMilliseconds) {
@@ -294,6 +318,43 @@ class PlayerController extends ChangeNotifier {
       return file.path;
     } catch (_) {
       return null;
+    }
+  }
+
+  Future<void> _saveDurationIfReady() async {
+    if (!_mediaLoaded) return;
+    final item = current;
+    if (item == null ||
+        _duration <= Duration.zero ||
+        _durationSavedFor == item.id) {
+      return;
+    }
+    _durationSavedFor = item.id;
+    try {
+      await _repository.saveDuration(item.id, _duration);
+    } catch (_) {
+      _durationSavedFor = null;
+    }
+  }
+
+  Future<void> _saveDimensionsIfReady() async {
+    if (!_mediaLoaded) return;
+    final item = current;
+    final width = _player.state.width;
+    final height = _player.state.height;
+    if (item == null ||
+        width == null ||
+        height == null ||
+        width <= 0 ||
+        height <= 0 ||
+        _dimensionsSavedFor == item.id) {
+      return;
+    }
+    _dimensionsSavedFor = item.id;
+    try {
+      await _repository.saveDimensions(item.id, width, height);
+    } catch (_) {
+      _dimensionsSavedFor = null;
     }
   }
 

@@ -38,7 +38,7 @@ class SettingsController extends ChangeNotifier {
 
   Future<void> _load() async {
     try {
-      final values = await Future.wait([
+      final values = await Future.wait<String?>([
         _repository.read(_kVolume),
         _repository.read(_kResume),
         _repository.read(_kHardwareDecoding),
