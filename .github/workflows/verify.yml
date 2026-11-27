@@ -90,19 +90,21 @@ jobs:
           if (!$runtime) { throw 'The redistributable x64 MSVC runtime was not found.' }
           Copy-Item -Path (Join-Path $runtime.DirectoryName '*.dll') -Destination 'build/windows/x64/runner/Release'
 
-      - name: Replace bundled debug zlib
+      - name: Remove unused ANGLE debug DLL
         shell: pwsh
         run: |
-          $vcpkg = Join-Path $env:VCPKG_INSTALLATION_ROOT 'vcpkg.exe'
-          $packages = Join-Path $env:RUNNER_TEMP 'still-vcpkg'
-          & $vcpkg install zlib:x64-windows --classic "--x-install-root=$packages"
-          if ($LASTEXITCODE -ne 0) { throw 'Failed to build release zlib.' }
-          $zlib = Get-ChildItem -LiteralPath (Join-Path $packages 'x64-windows/bin') -File |
-            Where-Object Name -Match '^zlib1?\.dll$' |
-            Select-Object -First 1
-          if (!$zlib) { throw 'The release zlib DLL was not found.' }
-          Copy-Item -LiteralPath $zlib.FullName -Destination 'build/windows/x64/runner/Release/zlib.dll' -Force
-          Copy-Item -LiteralPath (Join-Path $packages 'x64-windows/share/zlib/copyright') -Destination 'build/windows/x64/runner/Release/zlib-LICENSE.txt'
+          $release = 'build/windows/x64/runner/Release'
+          $debugZlib = Join-Path $release 'zlib.dll'
+          if (!(Test-Path -LiteralPath $debugZlib)) { exit 0 }
+          foreach ($binary in Get-ChildItem -LiteralPath $release -File -Recurse) {
+            if ($binary.Extension -notin '.dll', '.exe' -or $binary.Name -eq 'zlib.dll') { continue }
+            $bytes = [IO.File]::ReadAllBytes($binary.FullName)
+            if ([Text.Encoding]::ASCII.GetString($bytes) -match 'zlib\.dll' -or
+                [Text.Encoding]::Unicode.GetString($bytes) -match 'zlib\.dll') {
+              throw "$($binary.Name) references the ANGLE zlib DLL."
+            }
+          }
+          Remove-Item -LiteralPath $debugZlib
 
       - name: Upload Windows build
         uses: actions/upload-artifact@v4
