@@ -39,7 +39,7 @@ jobs:
         run: flutter test
 
   windows:
-    name: build windows (debug)
+    name: build windows (release)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -72,11 +72,27 @@ jobs:
         run: dart run build_runner build --delete-conflicting-outputs
 
       - name: Build
-        run: flutter build windows --debug
+        run: flutter build windows --release
+
+      - name: Bundle MSVC runtime
+        shell: pwsh
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $installation = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (!$installation) { throw 'Visual Studio C++ tools were not found.' }
+          $redist = Join-Path $installation 'VC/Redist/MSVC'
+          $runtime = Get-ChildItem -LiteralPath $redist -Directory |
+            Where-Object Name -Match '^\d+(\.\d+)+$' |
+            Sort-Object { [version]$_.Name } -Descending |
+            ForEach-Object {
+              Get-ChildItem -Path (Join-Path $_.FullName 'x64/Microsoft.VC*.CRT/vcruntime140.dll') -File -ErrorAction SilentlyContinue
+            } | Select-Object -First 1
+          if (!$runtime) { throw 'The redistributable x64 MSVC runtime was not found.' }
+          Copy-Item -Path (Join-Path $runtime.DirectoryName '*.dll') -Destination 'build/windows/x64/runner/Release'
 
       - name: Upload Windows build
         uses: actions/upload-artifact@v4
         with:
-          name: still-windows-x64-debug
-          path: build/windows/x64/runner/Debug/
+          name: still-windows-x64-release
+          path: build/windows/x64/runner/Release/
           if-no-files-found: error
