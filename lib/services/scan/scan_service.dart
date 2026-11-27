@@ -20,6 +20,7 @@ class ScanService extends ChangeNotifier {
   final ThumbnailService _thumbnails;
 
   bool _scanning = false;
+  bool _cancelRequested = false;
   String? _currentRoot;
   ScanResult? _lastResult;
   String? _error;
@@ -31,17 +32,10 @@ class ScanService extends ChangeNotifier {
   String? get error => _error;
 
   /// Scans every configured folder.
-  Future<void> scanAll() async {
-    if (_scanning) return;
-    final roots = await _repository.watchRoots().first;
-    await _run(roots);
-  }
+  Future<void> scanAll() => _run(() => _repository.watchRoots().first);
 
   /// Scans one folder.
-  Future<void> scanRoot(LibraryRoot root) async {
-    if (_scanning) return;
-    await _run([root]);
-  }
+  Future<void> scanRoot(LibraryRoot root) => _run(() async => [root]);
 
   /// Warms thumbnails for already indexed videos (called once after launch).
   Future<void> warmUpExisting({int limit = 60}) async {
@@ -51,24 +45,34 @@ class ScanService extends ChangeNotifier {
     unawaited(_thumbnails.warmUp(items));
   }
 
-  Future<void> _run(List<LibraryRoot> roots) async {
-    if (roots.isEmpty) return;
+  Future<void> _run(Future<List<LibraryRoot>> Function() loadRoots) async {
+    if (_scanning) return;
     _scanning = true;
+    _cancelRequested = false;
+    _lastResult = null;
     _error = null;
     notifyListeners();
 
     try {
-      for (final root in roots) {
-        if (!_scanning) break;
+      final incomplete = <String>[];
+      for (final root in await loadRoots()) {
+        if (_cancelRequested) break;
         _currentRoot = root.name;
         notifyListeners();
 
         final result = await MediaScanner.scan(root.path);
-        await _repository.applyScan(root.id, result.files);
+        if (_cancelRequested) break;
+        await _repository.applyScan(root.id, result);
         _lastResult = result;
+        if (result.errors > 0) {
+          incomplete.add('${root.name}（${result.errors} 处无法读取）');
+          _error = incomplete.join('、');
+        }
         notifyListeners();
       }
-      unawaited(_warmUpAfterScan());
+      if (!_cancelRequested && _lastResult != null) {
+        unawaited(_warmUpAfterScan());
+      }
     } catch (error) {
       _error = error.toString();
     } finally {
@@ -84,9 +88,8 @@ class ScanService extends ChangeNotifier {
   }
 
   Future<void> cancel() async {
-    // The scan runs in an isolate; the next await point observes this flag.
-    _scanning = false;
-    _currentRoot = null;
-    notifyListeners();
+    // Let the current isolate or database transaction finish before accepting
+    // another scan. Discard results that have not been submitted for writing.
+    if (_scanning) _cancelRequested = true;
   }
 }

@@ -67,17 +67,20 @@ class LibraryRepository {
   ///
   /// Existing rows keep their playback state: the upsert only writes metadata
   /// columns and `missing = false`. Rows that were not seen are flagged
-  /// missing instead of deleted.
-  Future<void> applyScan(int rootId, List<ScannedFile> files) async {
+  /// missing only after a complete scan.
+  Future<void> applyScan(int rootId, ScanResult result) async {
     final now = DateTime.now();
     await _db.transaction(() async {
-      await (_db.update(_db.mediaItems)
-            ..where((t) => t.rootId.equals(rootId)))
-          .write(const MediaItemsCompanion(missing: Value(true)));
+      if (await rootById(rootId) == null) return;
+      if (result.errors == 0) {
+        await (_db.update(_db.mediaItems)
+              ..where((t) => t.rootId.equals(rootId)))
+            .write(const MediaItemsCompanion(missing: Value(true)));
+      }
 
-      if (files.isNotEmpty) {
+      if (result.files.isNotEmpty) {
         final rows = <MediaItemsCompanion>[
-          for (final file in files)
+          for (final file in result.files)
             MediaItemsCompanion.insert(
               rootId: rootId,
               path: file.path,
@@ -91,13 +94,36 @@ class LibraryRepository {
             ),
         ];
         await _db.batch((batch) {
-          batch.insertAllOnConflictUpdate(_db.mediaItems, rows);
+          for (final file in result.files) {
+            batch.update(
+              _db.mediaItems,
+              const MediaItemsCompanion(
+                thumbnailPath: Value(null),
+                durationMs: Value(null),
+                width: Value(null),
+                height: Value(null),
+              ),
+              where: (item) =>
+                  item.path.equals(file.path) &
+                  (item.sizeBytes.equals(file.sizeBytes).not() |
+                      item.modifiedAt.equals(file.modifiedAt).not()),
+            );
+          }
+          for (final row in rows) {
+            batch.insert(
+              _db.mediaItems,
+              row,
+              onConflict: DoUpdate((_) => row, target: [_db.mediaItems.path]),
+            );
+          }
         });
       }
 
-      await (_db.update(_db.libraryRoots)
-            ..where((t) => t.id.equals(rootId)))
-          .write(LibraryRootsCompanion(lastScanAt: Value(now)));
+      if (result.errors == 0) {
+        await (_db.update(_db.libraryRoots)
+              ..where((t) => t.id.equals(rootId)))
+            .write(LibraryRootsCompanion(lastScanAt: Value(now)));
+      }
     });
   }
 
@@ -197,14 +223,16 @@ class LibraryRepository {
   }
 
   /// Learned from the player the first time a file is opened.
-  Future<void> saveDuration(int id, Duration duration) async {
-    await (_db.update(_db.mediaItems)..where((t) => t.id.equals(id))).write(
+  Future<void> saveDuration(MediaItem item, Duration duration) async {
+    await _writeFileMetadata(
+      item,
       MediaItemsCompanion(durationMs: Value(duration.inMilliseconds)),
     );
   }
 
-  Future<void> saveDimensions(int id, int width, int height) async {
-    await (_db.update(_db.mediaItems)..where((t) => t.id.equals(id))).write(
+  Future<void> saveDimensions(MediaItem item, int width, int height) async {
+    await _writeFileMetadata(
+      item,
       MediaItemsCompanion(width: Value(width), height: Value(height)),
     );
   }
@@ -218,10 +246,21 @@ class LibraryRepository {
     );
   }
 
-  Future<void> setThumbnail(int id, String path) async {
-    await (_db.update(_db.mediaItems)..where((t) => t.id.equals(id))).write(
+  Future<void> setThumbnail(MediaItem item, String path) async {
+    await _writeFileMetadata(
+      item,
       MediaItemsCompanion(thumbnailPath: Value(path)),
     );
+  }
+
+  Future<int> _writeFileMetadata(MediaItem item, MediaItemsCompanion metadata) {
+    return (_db.update(_db.mediaItems)..where(
+          (row) =>
+              row.id.equals(item.id) &
+              row.sizeBytes.equals(item.sizeBytes) &
+              row.modifiedAt.equals(item.modifiedAt),
+        ))
+        .write(metadata);
   }
 
   // ---------------------------------------------------------------------------

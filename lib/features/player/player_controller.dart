@@ -331,7 +331,7 @@ class PlayerController extends ChangeNotifier {
     }
     _durationSavedFor = item.id;
     try {
-      await _repository.saveDuration(item.id, _duration);
+      await _repository.saveDuration(item, _duration);
     } catch (_) {
       _durationSavedFor = null;
     }
@@ -352,7 +352,7 @@ class PlayerController extends ChangeNotifier {
     }
     _dimensionsSavedFor = item.id;
     try {
-      await _repository.saveDimensions(item.id, width, height);
+      await _repository.saveDimensions(item, width, height);
     } catch (_) {
       _dimensionsSavedFor = null;
     }

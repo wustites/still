@@ -68,6 +68,10 @@ ScanResult _scanSync(String rootPath) {
 
       try {
         final stat = entity.statSync();
+        if (stat.type == FileSystemEntityType.notFound) {
+          errors++;
+          continue;
+        }
         files.add(
           ScannedFile(
             path: entity.path,

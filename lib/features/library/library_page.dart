@@ -215,7 +215,7 @@ class _LibraryPageState extends State<LibraryPage> {
                     if (!_scan.scanning) {
                       if (_scan.error == null) return const SizedBox.shrink();
                       return _ScanBanner(
-                        text: '扫描失败：${_scan.error}',
+                        text: '扫描未完成：${_scan.error}',
                         error: true,
                       );
                     }

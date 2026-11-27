@@ -73,7 +73,7 @@ class ThumbnailService {
         }
         if (!ok) return null;
       }
-      await _repository.setThumbnail(item.id, target.path);
+      await _repository.setThumbnail(item, target.path);
       return target.path;
     } on ProcessException {
       return null;
